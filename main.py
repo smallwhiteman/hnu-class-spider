@@ -70,48 +70,59 @@ X-Requested-With: XMLHttpRequest
 """if checkcookieislegal(cookieData,check_headersStrData) == 200:
     print("cookie登录成功,状态码200")"""
 
-
-
 # 获取用户输入的老师名字列表
 teachers_input = input("请输入要抢的老师名字(中间用英文逗号隔开,如 王强,李四): ")
 teachers = [teacher.strip() for teacher in teachers_input.split(',')]
 
 # 读取class_id文件
-
 class_ids = []
 with open(os.path.join(base_dir, "class_id.txt"), 'r', encoding='utf-8') as file:
     for line in file:
-        parts = line.strip().split(',')
-        course_id = parts[0].strip()
-        teacher_names = [name.strip() for name in parts[1:]]  # 剩余部分是老师的名字列表
-        class_ids.append((course_id, teacher_names))
+        parts = line.strip().split('|')
+        course_info = parts[0].strip()
 
-# 匹配老师并输出对应的课程ID
-matched_ids = []
+        # 分割course_info以获取课程ID和老师名字列表
+        course_info_parts = course_info.split(',', 1)
+        course_id = course_info_parts[0].strip()
+
+        # 处理教师名单（即使只有一个名字也是合法的）
+        teacher_names = course_info_parts[1].strip().split(',') if len(course_info_parts) > 1 else []
+
+        # 获取课程名称，如果存在的话
+        course_name = parts[1].strip() if len(parts) > 1 else ''
+        class_ids.append((course_id, teacher_names, course_name))
+
+# 匹配老师并输出编号的结果
+matched_courses = []
+course_index = 1
 result = {}
 for teacher in teachers:
     result[teacher] = []
-    for course_id, teacher_names in class_ids:
+    for course_id, teacher_names, course_name in class_ids:
         if teacher in teacher_names:
-            result[teacher].append(course_id)
-            matched_ids.append(course_id)  # 添加到匹配列表中
+            matched_courses.append(f"{course_index}:{course_id},{','.join(teacher_names)}|{course_name}")
+            result[teacher].append(course_index)
+            course_index += 1
 
 # 输出结果
-for teacher, courses in result.items():
-    if courses:
-        print(f"{teacher} : {', '.join(courses)}")
-    else:
-        print(f"{teacher} 没有找到对应的课程ID")
+if matched_courses:
+    print("找到以下匹配的课程:")
+    for course in matched_courses:
+        print(course)
 
-# 输出匹配到的课程ID列表
-if(matched_ids == []):
+    # 获取用户选择的课程编号
+    selected_indices = input("请输入要选择的课程编号(中间用英文逗号隔开,如 1,2): ")
+    selected_indices = [int(index.strip()) for index in selected_indices.split(',')]
+
+    # 将选中的课程ID加入到matched_ids中
+    matched_ids = [matched_courses[i - 1].split(':')[1].split(',')[0] for i in selected_indices]
+
+    print("-------------------------------------------------------")
+    print("匹配完成,当前任务池:", matched_ids)
+else:
     print("-------------------------------------------------------")
     print("退出程序,错误原因:没有找到匹配课程ID")
     exit(0)
-else:
-    print("-------------------------------------------------------")
-    print("匹配完成,当前任务池:", matched_ids)
-
 
 
 with open(os.path.join(base_dir,"match.json"), 'w', encoding='utf-8') as match_file:
